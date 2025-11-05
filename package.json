@@ -1,0 +1,39 @@
+{
+  "name": "treasure-chest",
+  "version": "1.0.2",
+  "description": "A container package for system utilities",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "keywords": [
+    "container",
+    "system",
+    "utilities"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/khapu2906/treasure-chest.git"
+  },
+  "bugs": {
+    "url": "https://github.com/khapu2906/treasure-chest/issues"
+  },
+  "homepage": "https://github.com/khapu2906/treasure-chest#readme",
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "vitest": "^4.0.7",
+    "vittest": "^1.0.2"
+  }
+}
