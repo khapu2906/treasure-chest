@@ -1,6 +1,6 @@
 {
   "name": "@khapu2906/treasure-chest",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A container package for system utilities",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -19,7 +19,7 @@
     "utilities"
   ],
   "author": "Kent Phung",
-  "license": "MIT",
+  "license": "DIB",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/khapu2906/treasure-chest.git"

@@ -172,5 +172,4 @@ npm run build
 
 ## License
 
-MIT</content>
-<filePath>/Users/daikhanhphung/K-Doc/Projects/Packages/@khapu2906/treasure-chest/README.md
+DIB
