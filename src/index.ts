@@ -134,6 +134,3 @@ export class Container {
     this.currentContext = undefined;
   }
 }
-
-// Global container instance
-export const container = new Container();

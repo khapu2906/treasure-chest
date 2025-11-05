@@ -5,13 +5,13 @@ A simple and powerful TypeScript dependency injection container.
 ## Installation
 
 ```bash
-npm install treasure-chest
+npm install @khapu2906/treasure-chest
 ```
 
 ## Basic Usage
 
 ```typescript
-import { Container } from 'treasure-chest';
+import { Container } from '@khapu2906/treasure-chest';
 
 const container = new Container();
 
@@ -107,8 +107,8 @@ Clear all bindings and instances (useful for testing).
 ### Global Container
 
 ```typescript
-import { container } from 'treasure-chest';
-
+import { Container } from '@khapu2906/treasure-chest';
+const container = new Container();
 // Use global container
 container.bind('config', () => ({ env: 'production' }));
 ```
@@ -116,7 +116,7 @@ container.bind('config', () => ({ env: 'production' }));
 ## Real-world Example
 
 ```typescript
-import { Container } from 'treasure-chest';
+import { Container } from '@khapu2906/treasure-chest';
 
 class Database {
   connect() {
@@ -173,4 +173,4 @@ npm run build
 ## License
 
 MIT</content>
-<filePath>/Users/daikhanhphung/K-Doc/Projects/Packages/treasure-chest/README.md
+<filePath>/Users/daikhanhphung/K-Doc/Projects/Packages/@khapu2906/treasure-chest/README.md
