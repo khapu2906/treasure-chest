@@ -1,5 +1,5 @@
 {
-  "name": "treasure-chest",
+  "name": "@khapu2906/treasure-chest",
   "version": "1.0.2",
   "description": "A container package for system utilities",
   "main": "dist/index.js",
@@ -18,7 +18,7 @@
     "system",
     "utilities"
   ],
-  "author": "Your Name",
+  "author": "Kent Phung",
   "license": "MIT",
   "repository": {
     "type": "git",
