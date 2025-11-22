@@ -1,22 +1,61 @@
 {
   "name": "@khapu2906/treasure-chest",
-  "version": "1.0.4",
-  "description": "A container package for system utilities",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "version": "1.2.0",
+  "description": "A lightweight TypeScript dependency injection container for managing service dependencies",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
-    "build": "tsc",
-    "test": "vitest",
+    "build": "npm run clean && npm run build:cjs && npm run build:esm && npm run build:types",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:types": "tsc -p tsconfig.types.json",
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "test:ui": "vitest --ui",
-    "prepublishOnly": "npm run build && npm test"
+    "test:coverage": "vitest run --coverage",
+    "bench": "tsx benchmarks/performance.ts",
+    "example": "tsx",
+    "example:01": "tsx examples/01-basic-usage.ts",
+    "example:02": "tsx examples/02-dependency-injection.ts",
+    "example:03": "tsx examples/03-conditional-binding.ts",
+    "example:04": "tsx examples/04-contextual-binding.ts",
+    "example:05": "tsx examples/05-alias.ts",
+    "example:06": "tsx examples/06-scoped-lifecycle.ts",
+    "example:07": "tsx examples/07-lazy-loading.ts",
+    "example:08": "tsx examples/08-child-containers.ts",
+    "example:09": "tsx examples/09-circular-dependency.ts",
+    "examples": "npm run example:01 && npm run example:02 && npm run example:03 && npm run example:04 && npm run example:05 && npm run example:06 && npm run example:07 && npm run example:08 && npm run example:09",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "format": "prettier --write \"**/*.{ts,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,json,md}\"",
+    "prepublishOnly": "npm run lint && npm run format:check && npm run build && npm test"
   },
   "keywords": [
     "container",
-    "system",
-    "utilities"
+    "dependency-injection",
+    "di",
+    "ioc",
+    "inversion-of-control",
+    "service-container",
+    "typescript",
+    "singleton",
+    "transient",
+    "contextual-binding"
   ],
   "author": "Kent Phung",
   "license": "DIB",
@@ -30,10 +69,13 @@
   "homepage": "https://github.com/khapu2906/treasure-chest#readme",
   "devDependencies": {
     "@types/node": "^24.10.0",
-    "typescript": "^5.9.3"
-  },
-  "dependencies": {
-    "vitest": "^4.0.7",
-    "vittest": "^1.0.2"
+    "@typescript-eslint/eslint-plugin": "^8.20.0",
+    "@typescript-eslint/parser": "^8.20.0",
+    "@vitest/coverage-v8": "^4.0.7",
+    "eslint": "^9.17.0",
+    "prettier": "^3.4.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.7"
   }
 }

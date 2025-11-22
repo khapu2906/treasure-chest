@@ -205,8 +205,14 @@ describe('Container', () => {
         }
       }
 
-      container.when('UserService').needs('repo').give(() => new UserRepo());
-      container.when('AdminService').needs('repo').give(() => new AdminRepo());
+      container
+        .when('UserService')
+        .needs('repo')
+        .give(() => new UserRepo());
+      container
+        .when('AdminService')
+        .needs('repo')
+        .give(() => new AdminRepo());
 
       const userRepo = container.resolve<any>('repo', 'UserService');
       const adminRepo = container.resolve<any>('repo', 'AdminService');
@@ -259,9 +265,18 @@ describe('Container', () => {
     });
 
     it('should support multiple contextual bindings for same key', () => {
-      container.when('Service1').needs('dep').give(() => ({ id: 1 }));
-      container.when('Service2').needs('dep').give(() => ({ id: 2 }));
-      container.when('Service3').needs('dep').give(() => ({ id: 3 }));
+      container
+        .when('Service1')
+        .needs('dep')
+        .give(() => ({ id: 1 }));
+      container
+        .when('Service2')
+        .needs('dep')
+        .give(() => ({ id: 2 }));
+      container
+        .when('Service3')
+        .needs('dep')
+        .give(() => ({ id: 3 }));
 
       expect(container.resolve<any>('dep', 'Service1').id).toBe(1);
       expect(container.resolve<any>('dep', 'Service2').id).toBe(2);
@@ -365,7 +380,10 @@ describe('Container', () => {
     });
 
     it('should reset current context', () => {
-      container.when('Service').needs('dep').give(() => ({}));
+      container
+        .when('Service')
+        .needs('dep')
+        .give(() => ({}));
       container.resolve('dep', 'Service');
 
       container.reset();
@@ -450,16 +468,16 @@ describe('Container', () => {
         }
       }
       class UserRepository {
-        constructor(public db: Database) { }
+        constructor(public db: Database) {}
       }
       class AdminRepository {
-        constructor(public db: Database) { }
+        constructor(public db: Database) {}
       }
       class UserService {
-        constructor(public repo: UserRepository) { }
+        constructor(public repo: UserRepository) {}
       }
       class AdminService {
-        constructor(public repo: AdminRepository) { }
+        constructor(public repo: AdminRepository) {}
       }
 
       container.singleton('db', () => new Database());

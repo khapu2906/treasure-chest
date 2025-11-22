@@ -1,7 +1,7 @@
 src/
 tests/
 .vscode/
-jest.config.js
+vitest.config.ts
 tsconfig.json
 *.md
 .gitignore

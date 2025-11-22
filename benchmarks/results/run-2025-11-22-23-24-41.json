@@ -1,0 +1,118 @@
+{
+  "timestamp": "2025-11-22T16:24:41.204Z",
+  "version": "1.2.0",
+  "results": [
+    {
+      "name": "Register 1000 transient bindings",
+      "iterations": 100,
+      "total": "14.67",
+      "average": "0.146656",
+      "opsPerSec": "6819"
+    },
+    {
+      "name": "Register 1000 singleton bindings",
+      "iterations": 100,
+      "total": "15.61",
+      "average": "0.156135",
+      "opsPerSec": "6405"
+    },
+    {
+      "name": "Resolve first service (best case)",
+      "iterations": 10000,
+      "total": "3.57",
+      "average": "0.000357",
+      "opsPerSec": "2798704"
+    },
+    {
+      "name": "Resolve middle service",
+      "iterations": 10000,
+      "total": "3.58",
+      "average": "0.000358",
+      "opsPerSec": "2790113"
+    },
+    {
+      "name": "Resolve last service (worst case)",
+      "iterations": 10000,
+      "total": "2.67",
+      "average": "0.000267",
+      "opsPerSec": "3747481"
+    },
+    {
+      "name": "First resolve (creates instance)",
+      "iterations": 1000,
+      "total": "1.91",
+      "average": "0.001910",
+      "opsPerSec": "523629"
+    },
+    {
+      "name": "Second resolve (cached)",
+      "iterations": 10000,
+      "total": "6.02",
+      "average": "0.000602",
+      "opsPerSec": "1660222"
+    },
+    {
+      "name": "Resolve with condition (development)",
+      "iterations": 10000,
+      "total": "3.65",
+      "average": "0.000365",
+      "opsPerSec": "2741166"
+    },
+    {
+      "name": "Resolve with condition (production)",
+      "iterations": 10000,
+      "total": "2.98",
+      "average": "0.000298",
+      "opsPerSec": "3351113"
+    },
+    {
+      "name": "Scoped resolution with disposal",
+      "iterations": 1000,
+      "total": "1.87",
+      "average": "0.001865",
+      "opsPerSec": "536157"
+    },
+    {
+      "name": "Lazy resolve (wrapper creation)",
+      "iterations": 10000,
+      "total": "7.72",
+      "average": "0.000772",
+      "opsPerSec": "1295763"
+    },
+    {
+      "name": "Lazy value access (actual initialization)",
+      "iterations": 10000,
+      "total": "0.59",
+      "average": "0.000059",
+      "opsPerSec": "16931217"
+    },
+    {
+      "name": "Contextual resolve (ServiceA)",
+      "iterations": 10000,
+      "total": "4.22",
+      "average": "0.000422",
+      "opsPerSec": "2368102"
+    },
+    {
+      "name": "Non-contextual resolve (default)",
+      "iterations": 10000,
+      "total": "4.37",
+      "average": "0.000437",
+      "opsPerSec": "2288548"
+    },
+    {
+      "name": "Resolve from child (own binding)",
+      "iterations": 10000,
+      "total": "2.85",
+      "average": "0.000285",
+      "opsPerSec": "3514321"
+    },
+    {
+      "name": "Resolve from child (parent binding)",
+      "iterations": 10000,
+      "total": "5.94",
+      "average": "0.000594",
+      "opsPerSec": "1682428"
+    }
+  ]
+}
