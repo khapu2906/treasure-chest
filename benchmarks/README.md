@@ -21,6 +21,7 @@ results/run-2025-11-22-23-09-56.json
 ```
 
 **Format:**
+
 ```json
 {
   "timestamp": "2025-11-22T16:09:56.789Z",
@@ -48,6 +49,7 @@ Append-only log of all benchmark runs in JSONL format (one JSON object per line)
 ```
 
 **Usage:**
+
 ```bash
 # View all runs
 cat benchmarks/results/history.jsonl | jq .
@@ -72,54 +74,65 @@ Human-readable markdown report of the most recent run:
 ## Summary
 
 | Benchmark | Iterations | Total (ms) | Avg (ms) | Ops/sec |
-|-----------|------------|------------|----------|---------|
-| ... | ... | ... | ... | ... |
+| --------- | ---------- | ---------- | -------- | ------- |
+| ...       | ...        | ...        | ...      | ...     |
 ```
 
 ## Benchmark Categories
 
 ### 1. Binding Registration
+
 - Transient binding registration (1000 bindings)
 - Singleton binding registration (1000 bindings)
 
 ### 2. Service Resolution
+
 - Best case: First service (index 0)
 - Average case: Middle service (index 500)
 - Worst case: Last service (index 999)
 
 ### 3. Singleton Caching
+
 - First resolve (instance creation)
 - Subsequent resolves (cached)
 
 ### 4. Conditional Bindings
+
 - Development environment condition
 - Production environment condition
 
 ### 5. Scoped Resolution
+
 - Create scope → resolve → dispose cycle
 - IDisposable auto-cleanup
 
 ### 6. Lazy Loading
+
 - Lazy wrapper creation
 - Lazy value access (initialization)
 
 ### 7. Contextual Bindings
+
 - Context-specific resolution
 - Default (non-contextual) resolution
 
 ### 8. Child Containers
+
 - Resolve from child (own binding)
 - Resolve from child (parent binding)
 
 ## Performance Metrics
 
 ### Operations Per Second (ops/sec)
+
 Higher is better. Represents how many operations can be performed per second.
 
 ### Average Time (ms)
+
 Lower is better. Average time per operation in milliseconds.
 
 ### Total Time (ms)
+
 Total time for all iterations.
 
 ## Comparing Results

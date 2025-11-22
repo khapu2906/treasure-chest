@@ -5,24 +5,24 @@
 
 ## Summary
 
-| Benchmark | Iterations | Total (ms) | Avg (ms) | Ops/sec |
-|-----------|------------|------------|----------|---------|
-| Register 1000 transient bindings | 100 | 14.67 | 0.146656 | 6819 |
-| Register 1000 singleton bindings | 100 | 15.61 | 0.156135 | 6405 |
-| Resolve first service (best case) | 10000 | 3.57 | 0.000357 | 2798704 |
-| Resolve middle service | 10000 | 3.58 | 0.000358 | 2790113 |
-| Resolve last service (worst case) | 10000 | 2.67 | 0.000267 | 3747481 |
-| First resolve (creates instance) | 1000 | 1.91 | 0.001910 | 523629 |
-| Second resolve (cached) | 10000 | 6.02 | 0.000602 | 1660222 |
-| Resolve with condition (development) | 10000 | 3.65 | 0.000365 | 2741166 |
-| Resolve with condition (production) | 10000 | 2.98 | 0.000298 | 3351113 |
-| Scoped resolution with disposal | 1000 | 1.87 | 0.001865 | 536157 |
-| Lazy resolve (wrapper creation) | 10000 | 7.72 | 0.000772 | 1295763 |
-| Lazy value access (actual initialization) | 10000 | 0.59 | 0.000059 | 16931217 |
-| Contextual resolve (ServiceA) | 10000 | 4.22 | 0.000422 | 2368102 |
-| Non-contextual resolve (default) | 10000 | 4.37 | 0.000437 | 2288548 |
-| Resolve from child (own binding) | 10000 | 2.85 | 0.000285 | 3514321 |
-| Resolve from child (parent binding) | 10000 | 5.94 | 0.000594 | 1682428 |
+| Benchmark                                 | Iterations | Total (ms) | Avg (ms) | Ops/sec  |
+| ----------------------------------------- | ---------- | ---------- | -------- | -------- |
+| Register 1000 transient bindings          | 100        | 14.67      | 0.146656 | 6819     |
+| Register 1000 singleton bindings          | 100        | 15.61      | 0.156135 | 6405     |
+| Resolve first service (best case)         | 10000      | 3.57       | 0.000357 | 2798704  |
+| Resolve middle service                    | 10000      | 3.58       | 0.000358 | 2790113  |
+| Resolve last service (worst case)         | 10000      | 2.67       | 0.000267 | 3747481  |
+| First resolve (creates instance)          | 1000       | 1.91       | 0.001910 | 523629   |
+| Second resolve (cached)                   | 10000      | 6.02       | 0.000602 | 1660222  |
+| Resolve with condition (development)      | 10000      | 3.65       | 0.000365 | 2741166  |
+| Resolve with condition (production)       | 10000      | 2.98       | 0.000298 | 3351113  |
+| Scoped resolution with disposal           | 1000       | 1.87       | 0.001865 | 536157   |
+| Lazy resolve (wrapper creation)           | 10000      | 7.72       | 0.000772 | 1295763  |
+| Lazy value access (actual initialization) | 10000      | 0.59       | 0.000059 | 16931217 |
+| Contextual resolve (ServiceA)             | 10000      | 4.22       | 0.000422 | 2368102  |
+| Non-contextual resolve (default)          | 10000      | 4.37       | 0.000437 | 2288548  |
+| Resolve from child (own binding)          | 10000      | 2.85       | 0.000285 | 3514321  |
+| Resolve from child (parent binding)       | 10000      | 5.94       | 0.000594 | 1682428  |
 
 ## Details
 
@@ -33,14 +33,12 @@
 - **Average Time:** 0.146656ms
 - **Operations/Second:** 6819
 
-
 ### 2. Register 1000 singleton bindings
 
 - **Iterations:** 100
 - **Total Time:** 15.61ms
 - **Average Time:** 0.156135ms
 - **Operations/Second:** 6405
-
 
 ### 3. Resolve first service (best case)
 
@@ -49,14 +47,12 @@
 - **Average Time:** 0.000357ms
 - **Operations/Second:** 2798704
 
-
 ### 4. Resolve middle service
 
 - **Iterations:** 10,000
 - **Total Time:** 3.58ms
 - **Average Time:** 0.000358ms
 - **Operations/Second:** 2790113
-
 
 ### 5. Resolve last service (worst case)
 
@@ -65,14 +61,12 @@
 - **Average Time:** 0.000267ms
 - **Operations/Second:** 3747481
 
-
 ### 6. First resolve (creates instance)
 
 - **Iterations:** 1,000
 - **Total Time:** 1.91ms
 - **Average Time:** 0.001910ms
 - **Operations/Second:** 523629
-
 
 ### 7. Second resolve (cached)
 
@@ -81,14 +75,12 @@
 - **Average Time:** 0.000602ms
 - **Operations/Second:** 1660222
 
-
 ### 8. Resolve with condition (development)
 
 - **Iterations:** 10,000
 - **Total Time:** 3.65ms
 - **Average Time:** 0.000365ms
 - **Operations/Second:** 2741166
-
 
 ### 9. Resolve with condition (production)
 
@@ -97,14 +89,12 @@
 - **Average Time:** 0.000298ms
 - **Operations/Second:** 3351113
 
-
 ### 10. Scoped resolution with disposal
 
 - **Iterations:** 1,000
 - **Total Time:** 1.87ms
 - **Average Time:** 0.001865ms
 - **Operations/Second:** 536157
-
 
 ### 11. Lazy resolve (wrapper creation)
 
@@ -113,14 +103,12 @@
 - **Average Time:** 0.000772ms
 - **Operations/Second:** 1295763
 
-
 ### 12. Lazy value access (actual initialization)
 
 - **Iterations:** 10,000
 - **Total Time:** 0.59ms
 - **Average Time:** 0.000059ms
 - **Operations/Second:** 16931217
-
 
 ### 13. Contextual resolve (ServiceA)
 
@@ -129,14 +117,12 @@
 - **Average Time:** 0.000422ms
 - **Operations/Second:** 2368102
 
-
 ### 14. Non-contextual resolve (default)
 
 - **Iterations:** 10,000
 - **Total Time:** 4.37ms
 - **Average Time:** 0.000437ms
 - **Operations/Second:** 2288548
-
 
 ### 15. Resolve from child (own binding)
 
@@ -145,15 +131,12 @@
 - **Average Time:** 0.000285ms
 - **Operations/Second:** 3514321
 
-
 ### 16. Resolve from child (parent binding)
 
 - **Iterations:** 10,000
 - **Total Time:** 5.94ms
 - **Average Time:** 0.000594ms
 - **Operations/Second:** 1682428
-
-
 
 ---
 
