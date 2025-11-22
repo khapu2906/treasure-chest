@@ -294,6 +294,7 @@ app.use(expressScope(container));
 ```
 
 **Supported Patterns:**
+
 - ✅ Express middleware
 - ✅ Fastify hooks (onRequest/onResponse)
 - ✅ Koa middleware
@@ -551,6 +552,7 @@ npm run benchmark
 ```
 
 See [benchmarks/README.md](./benchmarks/README.md) for detailed documentation on:
+
 - Benchmark categories
 - Result formats
 - Comparing performance over time
