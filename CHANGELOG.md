@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-11-23
+
+Major release with advanced lifecycle features is composition
+
+### Added
+
+**Advanced Lifecycle Features:**
+
+- **Container Composition**: Added `Container.compose()` for mixing services from different domains
+  - Combine multiple containers without inheritance
+  - First-wins conflict resolution
+  - Clean separation of concerns
+  - Perfect for modular applications
+
 ## [1.2.0] - 2025-11-22
 
 Major release with advanced lifecycle features and performance optimizations.

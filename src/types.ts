@@ -49,6 +49,20 @@ export type FactoryFn<T> = (_c: any) => T;
 export type ConditionFn = (_c: any) => boolean;
 
 /**
+ * Options for container composition
+ */
+export interface ComposeOptions {
+  /** How to handle binding conflicts between containers */
+  conflictResolution?: 'first-wins' | 'last-wins' | 'throw-error';
+  /** Whether to prefix binding keys to avoid conflicts */
+  prefixBindings?: boolean;
+  /** Separator for prefixed binding keys */
+  prefixSeparator?: string;
+  /** Whether to inherit lifecycles from composed containers */
+  inheritLifecycles?: boolean;
+}
+
+/**
  * Internal binding interface representing a service registration
  * @template T The type of service being bound
  * @internal

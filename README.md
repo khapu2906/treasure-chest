@@ -138,7 +138,33 @@ const userRepo = container.resolve('repository', 'UserService'); // UserReposito
 const adminRepo = container.resolve('repository', 'AdminService'); // AdminRepository
 ```
 
-### 6. Scoped Lifecycle (NEW in v1.2.0)
+### 6. Container Composition (NEW in v1.3.0)
+
+Mix services from different domains without inheritance:
+
+```typescript
+import { Container } from '@khapu2906/treasure-chest';
+
+// Create domain-specific containers
+const infra = new Container();
+infra.singleton('db', () => new Database());
+
+const services = new Container();
+services.singleton('userService', () => new UserService());
+
+const controllers = new Container();
+controllers.singleton('userController', () => new UserController());
+
+// Compose them together
+const app = Container.compose([infra, services, controllers]);
+
+// All services available in one container
+const db = app.resolve('db');
+const userService = app.resolve('userService');
+const userController = app.resolve('userController');
+```
+
+### 7. Scoped Lifecycle (NEW in v1.2.0)
 
 Per-scope instances with automatic cleanup:
 
@@ -352,6 +378,15 @@ See [examples/10-middleware.ts](./examples/10-middleware.ts) for complete implem
 
 - Create an alias for a service
 
+#### Container Composition
+
+**`Container.compose(containers: Container[]): Container` ⭐ NEW v1.2.0**
+
+- Combine multiple containers into one
+- Allows mixing services from different domains
+- First-wins conflict resolution
+- Maintains container isolation
+
 #### Container Hierarchy
 
 **`createChild(): Container` ⭐ NEW**
@@ -479,10 +514,11 @@ Check out the [examples](./examples) directory for comprehensive real-world usag
 7. **Lazy Loading**: Performance optimization with deferred init
 8. **Child Containers**: Multi-tenant and plugin systems
 9. **Circular Dependency**: Detection and best practices
+10. **Container Composition**: Mix services from different domains
 
 ### Performance & Integration (v1.2.0) ⭐ NEW
 
-10. **Web Framework Middleware**: Express, Fastify, Koa integration
+11. **Web Framework Middleware**: Express, Fastify, Koa integration
     - Auto-scoping per HTTP request
     - IDisposable auto-detection
     - withScope() pattern demos

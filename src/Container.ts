@@ -45,6 +45,9 @@ export class Container {
   /** Parent container for hierarchy */
   private parent?: Container;
 
+  /** Composed containers for composition pattern */
+  private composedContainers: Container[] = [];
+
   /** Current active scope */
   private currentScope?: Scope;
 
@@ -504,6 +507,55 @@ export class Container {
     this.currentContext = undefined;
     this.currentScope = undefined;
     this.resolutionStack = [];
+  }
+
+  /**
+   * Compose multiple containers into a new container
+   * This allows mixing services from different domains without inheritance
+   *
+   * @param containers Array of containers to compose
+   * @returns New composed container
+   */
+  static compose(containers: Container[]): Container {
+    const composed = new Container();
+
+    // Validate containers
+    if (!containers || containers.length === 0) {
+      throw new Error(
+        'At least one container must be provided for composition'
+      );
+    }
+
+    // Store composed containers
+    composed.composedContainers = [...containers];
+
+    // Create proxy bindings for all keys from composed containers
+    const allKeys = new Set<string>();
+    containers.forEach((container) => {
+      container.keys().forEach((key) => allKeys.add(key));
+    });
+
+    // Bind proxy resolvers
+    for (const key of allKeys) {
+      composed.bind(key, (c) => c.resolveFromComposition(key));
+    }
+
+    return composed;
+  }
+
+  /**
+   * Resolve a service from composed containers
+   * @private
+   */
+  private resolveFromComposition<T>(key: string): T {
+    // Search through composed containers in order
+    for (const container of this.composedContainers) {
+      if (container.has(key)) {
+        return container.resolve(key);
+      }
+    }
+
+    throw new Error(`No binding found for key: ${key}`);
   }
 
   /**

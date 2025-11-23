@@ -438,8 +438,145 @@ async function runBenchmarks() {
   allResults.push(result16);
 
   // =============================================
-  // Save Results
+  // Benchmark 9: Composition Performance
   // =============================================
+
+  console.log('\n=== Benchmark 9: Composition Performance ===\n');
+
+  const infraContainer = new Container();
+  for (let i = 0; i < 50; i++) {
+    infraContainer.bind(`infra${i}`, () => ({ type: 'infra', id: i }));
+  }
+
+  const businessContainer = new Container();
+  for (let i = 0; i < 50; i++) {
+    businessContainer.bind(`business${i}`, () => ({ type: 'business', id: i }));
+  }
+
+  const presentationContainer = new Container();
+  for (let i = 0; i < 50; i++) {
+    presentationContainer.bind(`presentation${i}`, () => ({
+      type: 'presentation',
+      id: i,
+    }));
+  }
+
+  const result17 = measure(
+    'Create composed container (150 services)',
+    () => {
+      Container.compose([
+        infraContainer,
+        businessContainer,
+        presentationContainer,
+      ]);
+    },
+    100
+  );
+  printResult(result17);
+  allResults.push(result17);
+
+  const composedContainer = Container.compose([
+    infraContainer,
+    businessContainer,
+    presentationContainer,
+  ]);
+
+  const result18 = measure(
+    'Resolve from composed container (first)',
+    () => {
+      composedContainer.resolve('infra0');
+    },
+    10000
+  );
+  printResult(result18);
+  allResults.push(result18);
+
+  const result19 = measure(
+    'Resolve from composed container (middle)',
+    () => {
+      composedContainer.resolve('business25');
+    },
+    10000
+  );
+  printResult(result19);
+  allResults.push(result19);
+
+  const result20 = measure(
+    'Resolve from composed container (last)',
+    () => {
+      composedContainer.resolve('presentation49');
+    },
+    10000
+  );
+  printResult(result20);
+  allResults.push(result20);
+
+  // =============================================
+  // Benchmark 10: withScope Performance
+  // =============================================
+
+  console.log('\n=== Benchmark 10: withScope Performance ===\n');
+
+  const withScopeContainer = new Container();
+  withScopeContainer.scoped('request', () => ({
+    id: Math.random(),
+    data: 'test',
+  }));
+
+  const result21 = await measureAsync(
+    'withScope() execution (sync)',
+    async () => {
+      await withScopeContainer.withScope(() => {
+        withScopeContainer.resolve('request');
+        return 'done';
+      });
+    },
+    1000
+  );
+  printResult(result21);
+  allResults.push(result21);
+
+  const result22 = await measureAsync(
+    'withScope() execution (async)',
+    async () => {
+      await withScopeContainer.withScope(async () => {
+        withScopeContainer.resolve('request');
+        await Promise.resolve();
+        return 'done';
+      });
+    },
+    1000
+  );
+  printResult(result22);
+  allResults.push(result22);
+
+  // =============================================
+  // Benchmark 11: IDisposable Auto-dispose
+  // =============================================
+
+  console.log('\n=== Benchmark 11: IDisposable Auto-dispose ===\n');
+
+  class TestDisposable {
+    disposed = false;
+    dispose() {
+      this.disposed = true;
+    }
+  }
+
+  const disposableContainer = new Container();
+  disposableContainer.scoped('disposable', () => new TestDisposable());
+
+  const result23 = await measureAsync(
+    'Auto-dispose IDisposable',
+    async () => {
+      const scope = disposableContainer.createScope();
+      disposableContainer.resolve('disposable');
+      await scope.dispose();
+    },
+    1000
+  );
+  printResult(result23);
+  allResults.push(result23);
 
   saveResults(allResults);
 
