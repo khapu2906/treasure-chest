@@ -5,3 +5,4 @@ coverage
 .git
 .vscode
 package-lock.json
+.github

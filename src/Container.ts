@@ -110,7 +110,11 @@ export class Container {
    * container.singleton('config', (c) => new Config());
    * ```
    */
-  singleton<T>(key: ServiceKey, factory: FactoryFn<T>, condition?: ConditionFn) {
+  singleton<T>(
+    key: ServiceKey,
+    factory: FactoryFn<T>,
+    condition?: ConditionFn
+  ) {
     const existing = this.bindings.get(key) || [];
     existing.push({ key, factory, lifecycle: 'singleton', condition });
     this.bindings.set(key, existing);
@@ -262,7 +266,10 @@ export class Container {
    * @param context Optional context for contextual binding
    * @returns The matching binding or undefined
    */
-  private findBinding(key: ServiceKey, context?: ServiceKey): Binding | undefined {
+  private findBinding(
+    key: ServiceKey,
+    context?: ServiceKey
+  ): Binding | undefined {
     const realKey = this.aliases.get(key) || key;
     const cacheKey = this._toCacheKey(realKey, context);
 
@@ -566,7 +573,9 @@ export class Container {
 
     // Bind proxy resolvers
     for (const key of allKeys) {
-      composed.bind(key, (c) => c.resolveFromComposition(key, c.currentContext));
+      composed.bind(key, (c) =>
+        c.resolveFromComposition(key, c.currentContext)
+      );
     }
 
     return composed;
@@ -588,7 +597,11 @@ export class Container {
         if (binding.context === context) {
           // Found a perfect contextual match, this takes highest priority.
           return container.resolve(key, context);
-        } else if (!binding.context && !binding.condition && !foundDefaultResolution) {
+        } else if (
+          !binding.context &&
+          !binding.condition &&
+          !foundDefaultResolution
+        ) {
           // This is a non-contextual, non-conditional default binding. Store the first one as fallback.
           // Only store if we haven't found any default yet.
           foundDefaultResolution = {

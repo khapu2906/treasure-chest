@@ -604,8 +604,14 @@ describe('Container', () => {
       const USER_CONTEXT = Symbol('UserContext');
       const ADMIN_CONTEXT = Symbol('AdminContext');
 
-      container.when(USER_CONTEXT).needs(REPO).give(() => 'user repo');
-      container.when(ADMIN_CONTEXT).needs(REPO).give(() => 'admin repo');
+      container
+        .when(USER_CONTEXT)
+        .needs(REPO)
+        .give(() => 'user repo');
+      container
+        .when(ADMIN_CONTEXT)
+        .needs(REPO)
+        .give(() => 'admin repo');
 
       const userRepo = container.resolve(REPO, USER_CONTEXT);
       const adminRepo = container.resolve(REPO, ADMIN_CONTEXT);
@@ -630,7 +636,7 @@ describe('Container', () => {
       );
     });
 
-     it('should list symbol keys in keys()', () => {
+    it('should list symbol keys in keys()', () => {
       const SYMBOL_KEY = Symbol('MyService');
       container.bind(SYMBOL_KEY, () => 'service');
       container.bind('stringKey', () => 'another service');
@@ -640,7 +646,6 @@ describe('Container', () => {
       expect(keys).toContain('stringKey');
     });
   });
-  
 
   // ========================================
   // 12. COMPOSED CONTAINER CONTEXTUAL BINDING
@@ -693,7 +698,10 @@ describe('Container', () => {
     }
 
     class ServiceWithDependency {
-      constructor(public dep: Dependency, public value: string) {}
+      constructor(
+        public dep: Dependency,
+        public value: string
+      ) {}
     }
 
     it('should bind and resolve a class constructor as a key', () => {
@@ -718,7 +726,9 @@ describe('Container', () => {
         (c) => new ServiceWithDependency(c.resolve(Dependency), 'testValue')
       );
 
-      const service: ServiceWithDependency = container.resolve(ServiceWithDependency);
+      const service: ServiceWithDependency = container.resolve(
+        ServiceWithDependency
+      );
       expect(service).toBeInstanceOf(ServiceWithDependency);
       expect(service.dep).toBeInstanceOf(Dependency);
       expect(service.dep.name).toBe('injectedDep');
@@ -726,9 +736,9 @@ describe('Container', () => {
     });
 
     it('should throw error for unbound constructor key', () => {
-      expect(() => container.resolve<ServiceWithDependency>(ServiceWithDependency)).toThrow(
-        'No binding found for key: class ServiceWithDependency'
-      );
+      expect(() =>
+        container.resolve<ServiceWithDependency>(ServiceWithDependency)
+      ).toThrow('No binding found for key: class ServiceWithDependency');
     });
   });
 });
