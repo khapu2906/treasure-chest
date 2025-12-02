@@ -164,7 +164,7 @@ describe('Container', () => {
       container.bind(
         'logger',
         () => ({ level: 'debug' }),
-        (c) => c.resolve<any>('config').debug === true
+        (c: Container) => c.resolve<any>('config').debug === true
       );
 
       const logger = container.resolve<any>('logger');
@@ -562,6 +562,173 @@ describe('Container', () => {
       const service = container.resolve<MyService>('myService');
       expect(service).toBeInstanceOf(MyService);
       expect(service.getName()).toBe('MyService');
+    });
+  });
+
+  // ========================================
+  // 11. SYMBOL KEYS
+  // ========================================
+  describe('symbol keys', () => {
+    const SERVICE_A = Symbol('ServiceA');
+    const SERVICE_B = Symbol('ServiceB');
+    const ALIAS_A = Symbol('AliasA');
+
+    it('should bind and resolve with a symbol key', () => {
+      container.bind(SERVICE_A, () => 'service A');
+      expect(container.resolve(SERVICE_A)).toBe('service A');
+    });
+
+    it('should work with singleton using symbol key', () => {
+      container.singleton(SERVICE_A, () => ({ id: Math.random() }));
+      const instance1 = container.resolve(SERVICE_A);
+      const instance2 = container.resolve(SERVICE_A);
+      expect(instance1).toBe(instance2);
+    });
+
+    it('should check for binding with has() using symbol key', () => {
+      container.bind(SERVICE_A, () => 'service A');
+      expect(container.has(SERVICE_A)).toBe(true);
+      expect(container.has(SERVICE_B)).toBe(false);
+    });
+
+    it('should create an alias for a symbol key', () => {
+      container.singleton(SERVICE_A, () => 'service A');
+      container.alias(ALIAS_A, SERVICE_A);
+      const instance1 = container.resolve(SERVICE_A);
+      const instance2 = container.resolve(ALIAS_A);
+      expect(instance1).toBe(instance2);
+    });
+
+    it('should handle contextual binding with symbol keys', () => {
+      const REPO = Symbol('Repo');
+      const USER_CONTEXT = Symbol('UserContext');
+      const ADMIN_CONTEXT = Symbol('AdminContext');
+
+      container.when(USER_CONTEXT).needs(REPO).give(() => 'user repo');
+      container.when(ADMIN_CONTEXT).needs(REPO).give(() => 'admin repo');
+
+      const userRepo = container.resolve(REPO, USER_CONTEXT);
+      const adminRepo = container.resolve(REPO, ADMIN_CONTEXT);
+
+      expect(userRepo).toBe('user repo');
+      expect(adminRepo).toBe('admin repo');
+    });
+
+    it('should detect circular dependencies with symbol keys', () => {
+      container.bind(SERVICE_A, (c) => c.resolve(SERVICE_B));
+      container.bind(SERVICE_B, (c) => c.resolve(SERVICE_A));
+
+      expect(() => container.resolve(SERVICE_A)).toThrow(
+        `Circular dependency detected: ${SERVICE_A.toString()} -> ${SERVICE_B.toString()} -> ${SERVICE_A.toString()}`
+      );
+    });
+
+    it('should throw correct error for unbound symbol key', () => {
+      const UNBOUND_SYMBOL = Symbol('Unbound');
+      expect(() => container.resolve(UNBOUND_SYMBOL)).toThrow(
+        `No binding found for key: ${UNBOUND_SYMBOL.toString()}`
+      );
+    });
+
+     it('should list symbol keys in keys()', () => {
+      const SYMBOL_KEY = Symbol('MyService');
+      container.bind(SYMBOL_KEY, () => 'service');
+      container.bind('stringKey', () => 'another service');
+
+      const keys = container.keys();
+      expect(keys).toContain(SYMBOL_KEY);
+      expect(keys).toContain('stringKey');
+    });
+  });
+  
+
+  // ========================================
+  // 12. COMPOSED CONTAINER CONTEXTUAL BINDING
+  // ========================================
+  describe('composed container contextual binding', () => {
+    it('should resolve contextual binding correctly through a composed container', () => {
+      const configA = new Container();
+      configA.bind('dbConfig', () => ({ host: 'hostA' }));
+      configA
+        .when('ServiceA')
+        .needs('dbConfig')
+        .give(() => ({ host: 'contextualHostA' }));
+
+      const configB = new Container();
+      configB.bind('dbConfig', () => ({ host: 'hostB' }));
+      configB
+        .when('ServiceB')
+        .needs('dbConfig')
+        .give(() => ({ host: 'contextualHostB' }));
+
+      const composedContainer = Container.compose([configA, configB]);
+
+      // Resolve from composed container with context
+      const dbConfigFromServiceA = composedContainer.resolve<any>(
+        'dbConfig',
+        'ServiceA'
+      );
+      const dbConfigFromServiceB = composedContainer.resolve<any>(
+        'dbConfig',
+        'ServiceB'
+      );
+      const defaultDbConfigA = composedContainer.resolve<any>('dbConfig'); // Should get default from configA
+
+      expect(dbConfigFromServiceA.host).toBe('contextualHostA');
+      expect(dbConfigFromServiceB.host).toBe('contextualHostB');
+      expect(defaultDbConfigA.host).toBe('hostA'); // Verifies default behavior from first container
+    });
+  });
+
+  // ========================================
+  // 13. CONSTRUCTOR KEYS
+  // ========================================
+  describe('constructor keys', () => {
+    class MyService {
+      constructor(public id: number = Math.random()) {}
+    }
+
+    class Dependency {
+      constructor(public name: string = 'default') {}
+    }
+
+    class ServiceWithDependency {
+      constructor(public dep: Dependency, public value: string) {}
+    }
+
+    it('should bind and resolve a class constructor as a key', () => {
+      container.bind(MyService, () => new MyService(123));
+      const service = container.resolve<MyService>(MyService);
+      expect(service).toBeInstanceOf(MyService);
+      expect(service.id).toBe(123);
+    });
+
+    it('should work with singleton using a constructor key', () => {
+      container.singleton(MyService, () => new MyService(Math.random()));
+      const instance1 = container.resolve<MyService>(MyService);
+      const instance2 = container.resolve<MyService>(MyService);
+      expect(instance1).toBe(instance2);
+      expect(instance1.id).toBe(instance2.id); // Same instance, same ID
+    });
+
+    it('should bind and resolve a constructor key with dependencies', () => {
+      container.bind(Dependency, () => new Dependency('injectedDep'));
+      container.bind(
+        ServiceWithDependency,
+        (c) => new ServiceWithDependency(c.resolve(Dependency), 'testValue')
+      );
+
+      const service: ServiceWithDependency = container.resolve(ServiceWithDependency);
+      expect(service).toBeInstanceOf(ServiceWithDependency);
+      expect(service.dep).toBeInstanceOf(Dependency);
+      expect(service.dep.name).toBe('injectedDep');
+      expect(service.value).toBe('testValue');
+    });
+
+    it('should throw error for unbound constructor key', () => {
+      expect(() => container.resolve<ServiceWithDependency>(ServiceWithDependency)).toThrow(
+        'No binding found for key: class ServiceWithDependency'
+      );
     });
   });
 });

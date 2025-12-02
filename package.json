@@ -1,6 +1,6 @@
 {
   "name": "@khapu2906/treasure-chest",
-  "version": "1.3.0",
+  "version": "1.4.1",
   "description": "A lightweight TypeScript dependency injection container for managing service dependencies",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",

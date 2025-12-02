@@ -10,6 +10,7 @@ import type {
   DisposeFn,
   FactoryFn,
   Lifecycle,
+  ServiceKey,
 } from './types';
 import { Lazy } from './Lazy';
 import { Scope } from './Scope';
@@ -27,20 +28,20 @@ import { Scope } from './Scope';
  */
 export class Container {
   /** Map-based storage for bindings - O(1) lookup */
-  private bindings = new Map<string, Binding[]>();
+  private bindings = new Map<ServiceKey, Binding[]>();
 
   /** Cache for singleton instances */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private instances = new Map<string, any>();
 
   /** Mapping of aliases to original keys */
-  private aliases = new Map<string, string>();
+  private aliases = new Map<ServiceKey, ServiceKey>();
 
   /** Cache for resolved bindings - performance optimization */
   private bindingCache = new Map<string, Binding>();
 
   /** Current resolution context for contextual binding */
-  private currentContext?: string;
+  private currentContext?: ServiceKey;
 
   /** Parent container for hierarchy */
   private parent?: Container;
@@ -52,7 +53,7 @@ export class Container {
   private currentScope?: Scope;
 
   /** Resolution stack for circular dependency detection */
-  private resolutionStack: string[] = [];
+  private resolutionStack: ServiceKey[] = [];
 
   /**
    * Create a new container
@@ -60,6 +61,19 @@ export class Container {
    */
   constructor(parent?: Container) {
     this.parent = parent;
+  }
+
+  /**
+   * Generates a consistent string key for caching, handling both strings and symbols.
+   * This is a simple implementation; it assumes no string keys will collide with `Symbol().toString()`.
+   * @private
+   */
+  private _toCacheKey(key: ServiceKey, context?: ServiceKey): string {
+    const keyStr = key.toString();
+    if (context) {
+      return `${keyStr}::${context.toString()}`;
+    }
+    return keyStr;
   }
 
   /**
@@ -76,7 +90,7 @@ export class Container {
    * container.bind('cache', (c) => new Cache(), (c) => process.env.CACHE_ENABLED === 'true');
    * ```
    */
-  bind<T>(key: string, factory: FactoryFn<T>, condition?: ConditionFn) {
+  bind<T>(key: ServiceKey, factory: FactoryFn<T>, condition?: ConditionFn) {
     const existing = this.bindings.get(key) || [];
     existing.push({ key, factory, lifecycle: 'transient', condition });
     this.bindings.set(key, existing);
@@ -96,7 +110,7 @@ export class Container {
    * container.singleton('config', (c) => new Config());
    * ```
    */
-  singleton<T>(key: string, factory: FactoryFn<T>, condition?: ConditionFn) {
+  singleton<T>(key: ServiceKey, factory: FactoryFn<T>, condition?: ConditionFn) {
     const existing = this.bindings.get(key) || [];
     existing.push({ key, factory, lifecycle: 'singleton', condition });
     this.bindings.set(key, existing);
@@ -118,7 +132,7 @@ export class Container {
    * });
    * ```
    */
-  scoped<T>(key: string, factory: FactoryFn<T>, dispose?: DisposeFn) {
+  scoped<T>(key: ServiceKey, factory: FactoryFn<T>, dispose?: DisposeFn) {
     const existing = this.bindings.get(key) || [];
     existing.push({ key, factory, lifecycle: 'scoped', dispose });
     this.bindings.set(key, existing);
@@ -142,7 +156,7 @@ export class Container {
    * ```
    */
   lazy<T>(
-    key: string,
+    key: ServiceKey,
     factory: FactoryFn<T>,
     lifecycle: Lifecycle = 'singleton'
   ) {
@@ -165,7 +179,7 @@ export class Container {
    * // Both keys now resolve to the same binding
    * ```
    */
-  alias(aliasKey: string, originalKey: string) {
+  alias(aliasKey: ServiceKey, originalKey: ServiceKey) {
     this.aliases.set(aliasKey, originalKey);
   }
 
@@ -248,9 +262,9 @@ export class Container {
    * @param context Optional context for contextual binding
    * @returns The matching binding or undefined
    */
-  private findBinding(key: string, context?: string): Binding | undefined {
+  private findBinding(key: ServiceKey, context?: ServiceKey): Binding | undefined {
     const realKey = this.aliases.get(key) || key;
-    const cacheKey = context ? `${realKey}::${context}` : realKey;
+    const cacheKey = this._toCacheKey(realKey, context);
 
     // Check cache first
     if (this.bindingCache.has(cacheKey)) {
@@ -307,12 +321,14 @@ export class Container {
    * const userRepo = container.resolve('UserRepo', 'UserService');
    * ```
    */
-  resolve<T>(key: string, context?: string): T {
+  resolve<T>(key: ServiceKey, context?: ServiceKey): T {
     const realKey = this.aliases.get(key) || key;
 
     // Circular dependency detection
     if (this.resolutionStack.includes(realKey)) {
-      const chain = [...this.resolutionStack, realKey].join(' -> ');
+      const chain = [...this.resolutionStack, realKey]
+        .map((k) => k.toString())
+        .join(' -> ');
       throw new Error(`Circular dependency detected: ${chain}`);
     }
 
@@ -322,7 +338,7 @@ export class Container {
     const binding = this.findBinding(key, this.currentContext);
 
     if (!binding) {
-      throw new Error(`No binding found for key: ${realKey}`);
+      throw new Error(`No binding found for key: ${realKey.toString()}`);
     }
 
     // Add to resolution stack
@@ -364,10 +380,9 @@ export class Container {
    * Resolve a singleton instance
    * @private
    */
-  private resolveSingleton<T>(binding: Binding<T>, cacheKey: string): T {
-    const fullCacheKey = binding.context
-      ? `${cacheKey}::${binding.context}`
-      : cacheKey;
+  private resolveSingleton<T>(binding: Binding<T>, cacheKey: ServiceKey): T {
+    // Singletons can be contextual, so we use a string-based key for the instance map.
+    const fullCacheKey = this._toCacheKey(cacheKey, binding.context);
 
     if (this.instances.has(fullCacheKey)) {
       return this.instances.get(fullCacheKey);
@@ -382,10 +397,10 @@ export class Container {
    * Resolve a scoped instance
    * @private
    */
-  private resolveScoped<T>(binding: Binding<T>, key: string): T {
+  private resolveScoped<T>(binding: Binding<T>, key: ServiceKey): T {
     if (!this.currentScope) {
       throw new Error(
-        `No active scope for scoped binding: ${key}. Call createScope() first.`
+        `No active scope for scoped binding: ${key.toString()}. Call createScope() first.`
       );
     }
 
@@ -402,8 +417,8 @@ export class Container {
    * Resolve a lazy instance
    * @private
    */
-  private resolveLazy<T>(binding: Binding<T>, cacheKey: string): Lazy<T> {
-    const fullCacheKey = `lazy::${cacheKey}`;
+  private resolveLazy<T>(binding: Binding<T>, cacheKey: ServiceKey): Lazy<T> {
+    const fullCacheKey = `lazy::${this._toCacheKey(cacheKey)}`;
 
     if (this.instances.has(fullCacheKey)) {
       return this.instances.get(fullCacheKey);
@@ -434,9 +449,9 @@ export class Container {
    * container.when('OrderService').needs('UserRepo').give(() => new RealUserRepo());
    * ```
    */
-  when(context: string) {
+  when(context: ServiceKey) {
     return {
-      needs: (depKey: string) => ({
+      needs: (depKey: ServiceKey) => ({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         give: (factory: FactoryFn<any>) => {
           const existing = this.bindings.get(depKey) || [];
@@ -466,8 +481,22 @@ export class Container {
    * }
    * ```
    */
-  has(key: string): boolean {
-    return this.findBinding(key) !== undefined;
+  has(key: ServiceKey): boolean {
+    // We check both the main bindings and aliases
+    if (this.bindings.has(key) || this.aliases.has(key)) {
+      return true;
+    }
+    // Check parent if it exists
+    if (this.parent && this.parent.has(key)) {
+      return true;
+    }
+    // A simple findBinding is not enough as it might not check aliases correctly
+    // across the hierarchy. A more robust check is needed.
+    try {
+      return this.findBinding(key) !== undefined;
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -481,7 +510,7 @@ export class Container {
    * console.log('Registered services:', keys);
    * ```
    */
-  keys(): string[] {
+  keys(): ServiceKey[] {
     const ownKeys = Array.from(this.bindings.keys());
     const parentKeys = this.parent ? this.parent.keys() : [];
     return [...new Set([...ownKeys, ...parentKeys])];
@@ -530,14 +559,14 @@ export class Container {
     composed.composedContainers = [...containers];
 
     // Create proxy bindings for all keys from composed containers
-    const allKeys = new Set<string>();
+    const allKeys = new Set<ServiceKey>();
     containers.forEach((container) => {
       container.keys().forEach((key) => allKeys.add(key));
     });
 
     // Bind proxy resolvers
     for (const key of allKeys) {
-      composed.bind(key, (c) => c.resolveFromComposition(key));
+      composed.bind(key, (c) => c.resolveFromComposition(key, c.currentContext));
     }
 
     return composed;
@@ -547,15 +576,34 @@ export class Container {
    * Resolve a service from composed containers
    * @private
    */
-  private resolveFromComposition<T>(key: string): T {
-    // Search through composed containers in order
+  private resolveFromComposition<T>(key: ServiceKey, context?: ServiceKey): T {
+    let foundDefaultResolution: { container: Container; result: T } | undefined;
+
     for (const container of this.composedContainers) {
-      if (container.has(key)) {
-        return container.resolve(key);
+      // Temporarily use `findBinding` to inspect without full resolution
+      // This is a workaround due to `resolve` not returning binding metadata.
+      const binding = (container as any)['findBinding'](key, context);
+
+      if (binding) {
+        if (binding.context === context) {
+          // Found a perfect contextual match, this takes highest priority.
+          return container.resolve(key, context);
+        } else if (!binding.context && !binding.condition && !foundDefaultResolution) {
+          // This is a non-contextual, non-conditional default binding. Store the first one as fallback.
+          // Only store if we haven't found any default yet.
+          foundDefaultResolution = {
+            container: container,
+            result: container.resolve(key, undefined), // Resolve default from this container (without context)
+          };
+        }
       }
     }
 
-    throw new Error(`No binding found for key: ${key}`);
+    if (foundDefaultResolution) {
+      return foundDefaultResolution.result;
+    }
+
+    throw new Error(`No binding found for key: ${key.toString()}`);
   }
 
   /**

@@ -4,7 +4,7 @@
  * @module Scope
  */
 
-import type { DisposeFn, IDisposable } from './types';
+import type { DisposeFn, IDisposable, ServiceKey } from './types';
 
 /**
  * Scope class for managing scoped instances
@@ -19,7 +19,7 @@ import type { DisposeFn, IDisposable } from './types';
  */
 export class Scope {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private instances: Map<string, any> = new Map();
+  private instances: Map<ServiceKey | Symbol, any> = new Map();
   private disposables: DisposeFn[] = [];
 
   /**
@@ -28,7 +28,7 @@ export class Scope {
    * @returns The instance or undefined
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  get(key: string): any {
+  get(key: ServiceKey): any {
     return this.instances.get(key);
   }
 
@@ -41,7 +41,7 @@ export class Scope {
    * @param dispose Optional disposal function
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  set(key: string, value: any, dispose?: DisposeFn) {
+  set(key: ServiceKey, value: any, dispose?: DisposeFn) {
     this.instances.set(key, value);
 
     // Auto-detect IDisposable
@@ -59,7 +59,7 @@ export class Scope {
    * @param key The service key
    * @returns True if the instance exists
    */
-  has(key: string): boolean {
+  has(key: ServiceKey): boolean {
     return this.instances.has(key);
   }
 

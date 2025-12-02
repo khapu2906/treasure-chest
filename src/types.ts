@@ -70,7 +70,7 @@ export interface ComposeOptions {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface Binding<T = any> {
   /** The service key identifier */
-  key: string;
+  key: ServiceKey;
   /** Factory function to create the service instance */
   factory: FactoryFn<T>;
   /** Lifecycle type: transient, singleton, or scoped */
@@ -78,9 +78,15 @@ export interface Binding<T = any> {
   /** Optional condition for conditional binding */
   condition?: ConditionFn;
   /** Optional context for contextual binding */
-  context?: string;
+  context?: ServiceKey;
   /** Whether this is a lazy binding */
   lazy?: boolean;
   /** Optional disposal function */
   dispose?: DisposeFn;
 }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Constructor<T = any> = new (...args: any[]) => T;
+
+
+export type ServiceKey = string | Symbol | Constructor;
