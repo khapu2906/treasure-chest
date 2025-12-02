@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2025-12-02
+
+### Added
+
+- Support for `Symbol` and class constructors as `ServiceKey`s. This allows for collision-free, type-safe, and refactor-friendly dependency registration for all container operations (`bind`, `resolve`, `alias`, etc.).
+
+### Fixed
+
+- Corrected resolution logic in composed containers (`Container.compose`) to properly prioritize contextual bindings. The resolver now correctly selects a context-specific dependency if available, falling back to the first-registered default binding if no contextual match is found.
+- Resolved a minor TypeScript type inference issue in test files by explicitly typing the container parameter in a condition function.
+
 ## [1.3.0] - 2025-11-23
 
 Major release with advanced lifecycle features is composition

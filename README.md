@@ -333,20 +333,20 @@ See [examples/10-middleware.ts](./examples/10-middleware.ts) for complete implem
 
 #### Lifecycle Methods
 
-**`bind<T>(key: string, factory: FactoryFn<T>, condition?: ConditionFn)`**
+**`bind<T>(key: ServiceKey, factory: FactoryFn<T>, condition?: ConditionFn)`**
 
 - Register a transient service (new instance each time)
 
-**`singleton<T>(key: string, factory: FactoryFn<T>, condition?: ConditionFn)`**
+**`singleton<T>(key: ServiceKey, factory: FactoryFn<T>, condition?: ConditionFn)`**
 
 - Register a singleton service (single instance shared)
 
-**`scoped<T>(key: string, factory: FactoryFn<T>, dispose?: DisposeFn)` ⭐ NEW**
+**`scoped<T>(key: ServiceKey, factory: FactoryFn<T>, dispose?: DisposeFn)` ⭐ NEW**
 
 - Register a scoped service (instance per scope)
 - Optional cleanup function called on dispose
 
-**`lazy<T>(key: string, factory: FactoryFn<T>, lifecycle?: Lifecycle)` ⭐ NEW**
+**`lazy<T>(key: ServiceKey, factory: FactoryFn<T>, lifecycle?: Lifecycle)` ⭐ NEW**
 
 - Register a lazy service (deferred initialization)
 - Returns `Lazy<T>` wrapper
@@ -354,33 +354,33 @@ See [examples/10-middleware.ts](./examples/10-middleware.ts) for complete implem
 
 #### Resolution Methods
 
-**`resolve<T>(key: string, context?: string): T`**
+**`resolve<T>(key: ServiceKey, context?: ServiceKey): T`**
 
 - Resolve a service from the container
 - Supports circular dependency detection
 
-**`has(key: string): boolean` ⭐ NEW**
+**`has(key: ServiceKey): boolean` ⭐ NEW**
 
 - Check if a binding exists for a key
 
-**`keys(): string[]` ⭐ NEW**
+**`keys(): ServiceKey[]` ⭐ NEW**
 
 - Get all registered service keys
 
 #### Contextual Binding
 
-**`when(context: string).needs(key: string).give(factory: FactoryFn)`**
+**`when(context: ServiceKey).needs(key: ServiceKey).give(factory: FactoryFn)`**
 
 - Create context-specific bindings
 - Fluent API for readability
 
-**`alias(aliasKey: string, originalKey: string)`**
+**`alias(aliasKey: ServiceKey, originalKey: ServiceKey)`**
 
 - Create an alias for a service
 
 #### Container Composition
 
-**`Container.compose(containers: Container[]): Container` ⭐ NEW v1.2.0**
+**`Container.compose(containers: Container[]): Container` ⭐ NEW v1.3.0**
 
 - Combine multiple containers into one
 - Allows mixing services from different domains
@@ -427,8 +427,10 @@ import {
   Lifecycle,
   IDisposable,
   DisposeFn,
+  ServiceKey,
 } from '@khapu2906/treasure-chest';
 
+// ServiceKey: 'string' | 'Symbol' | 'Constructor' ⭐ NEW v1.4.1
 // Lifecycle: 'transient' | 'singleton' | 'scoped'
 // Lazy<T>: Wrapper with .value and .isInitialized
 // Scope: Scope management with .dispose()
