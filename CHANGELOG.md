@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-07-27
+
+### Added
+
+- `Container.graph()` and a new `Graph` class for inspecting a container's bindings and the dependency edges observed while resolving them.
+  - `getNodes(filter)` / `getNode(key)` - list or filter bindings by lifecycle, resolved state, laziness, inherited state, or key (substring/RegExp).
+  - `getEdges(filter)`, `dependenciesOf(key)`, `dependentsOf(key)` - inspect the dependency relationships between bindings.
+  - `roots()` / `leaves()` - find entry-point services vs. services with no dependencies.
+  - `toTree(key)` / `forest()` - build nested, UI-ready tree structures (with cycle-safe recursion) from any binding or from the whole graph at once.
+  - `toJSON()` / `toDot()` - export a plain-object snapshot or Graphviz DOT source.
+
+### Fixed
+
+- **Breaking behavior fix**: singleton bindings declared on a parent container are now truly shared - every child container that inherits the binding resolves the exact same instance, matching the documented "single instance shared across all resolves" contract. Previously, each child container cached and created its own separate instance the first time it resolved an inherited singleton. `scoped` and `lazy` bindings are unaffected by this change and keep their existing per-resolving-container behavior.
+- `ServiceKey` is now actually exported from the package entry point. The README documented it as importable since v1.4.1, but `src/index.ts` never re-exported it.
+
 ## [1.4.1] - 2025-12-02
 
 ### Added

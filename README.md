@@ -33,7 +33,7 @@ A lightweight and powerful TypeScript dependency injection container for managin
 ### Developer Experience
 
 - **Intuitive API**: Fluent API with comprehensive JSDoc
-- **Well Tested**: 62+ test cases with full coverage
+- **Well Tested**: 110+ test cases with full coverage
 - **Dual Module Support**: Both CommonJS and ES Modules (ESM)
 - **Type Safe**: Full TypeScript declarations
 - **Production Ready**: Battle-tested patterns
@@ -234,6 +234,10 @@ tenant2.singleton('logger', () => new TenantLogger('tenant2'));
 // Each tenant has its own logger but shares config
 tenant1.resolve('config'); // From parent
 tenant1.resolve('logger'); // From tenant1
+
+// Singletons declared on the parent are a single shared instance across
+// every child that inherits them (v1.5.0+):
+tenant1.resolve('config') === tenant2.resolve('config'); // true
 ```
 
 ### 9. Circular Dependency Detection (NEW in v1.2.0)
@@ -327,6 +331,39 @@ app.use(expressScope(container));
 
 See [examples/10-middleware.ts](./examples/10-middleware.ts) for complete implementations.
 
+### 12. Dependency Graph Inspection (NEW in v1.5.0)
+
+Inspect, filter, and visualize a container's bindings and the dependency edges discovered while resolving them - useful for debugging, admin tooling, or feeding a UI in another system.
+
+```typescript
+container.singleton('db', () => new Database());
+container.singleton('repo', (c) => new Repo(c.resolve('db')));
+container.singleton('service', (c) => new Service(c.resolve('repo')));
+container.resolve('service');
+
+const graph = container.graph();
+
+// Filter bindings
+graph.getNodes({ lifecycle: 'singleton', resolved: true });
+graph.getNodes({ key: /Service$/ });
+
+// Walk relationships
+graph.dependenciesOf('service'); // -> [repo]
+graph.dependentsOf('db'); // -> [repo]
+
+// UI-ready nested trees (safe against cross-call cycles)
+graph.toTree('service'); // { key: 'service', children: [{ key: 'repo', children: [...] }] }
+graph.forest(); // a tree for every root, covering the whole graph at once
+
+// Export
+graph.toJSON(); // plain { nodes, edges } - safe to send over an API to another system
+graph.toDot(); // Graphviz DOT source for visualization
+```
+
+> **Note:** edges are recorded at runtime as `resolve()` runs, so they only reflect dependencies that have actually been resolved at least once - this is not static analysis of factory source code.
+
+See [examples/15-dependency-graph.ts](./examples/15-dependency-graph.ts) for a complete walkthrough.
+
 ## API Reference
 
 ### Container Class
@@ -417,6 +454,13 @@ See [examples/10-middleware.ts](./examples/10-middleware.ts) for complete implem
 - Dispose container and all scoped instances
 - Calls cleanup functions
 
+#### Introspection
+
+**`graph(): Graph` ⭐ NEW v1.5.0**
+
+- Build a filterable snapshot of this container's bindings (own, inherited from a parent, and inherited from composed containers) plus the dependency edges observed while resolving
+- See [Dependency Graph Inspection](#12-dependency-graph-inspection-new-in-v150) above
+
 ### Exported Types
 
 ```typescript
@@ -424,10 +468,16 @@ import {
   Container,
   Lazy,
   Scope,
+  Graph,
   Lifecycle,
   IDisposable,
   DisposeFn,
   ServiceKey,
+  GraphNode,
+  GraphEdge,
+  GraphSnapshot,
+  GraphNodeFilter,
+  GraphTreeNode,
 } from '@khapu2906/treasure-chest';
 
 // ServiceKey: 'string' | 'Symbol' | 'Constructor' ⭐ NEW v1.4.1
@@ -436,6 +486,8 @@ import {
 // Scope: Scope management with .dispose()
 // IDisposable: Interface for auto-cleanup detection ⭐ NEW v1.2.0
 // DisposeFn: Type for cleanup functions
+// Graph: Filterable dependency graph, from container.graph() ⭐ NEW v1.5.0
+// GraphNode / GraphEdge / GraphSnapshot / GraphNodeFilter / GraphTreeNode: Graph data shapes ⭐ NEW v1.5.0
 ```
 
 ### Global Container
@@ -524,6 +576,10 @@ Check out the [examples](./examples) directory for comprehensive real-world usag
     - Auto-scoping per HTTP request
     - IDisposable auto-detection
     - withScope() pattern demos
+
+### Introspection & Tooling (v1.5.0) ⭐ NEW
+
+15. **Dependency Graph**: Filter bindings, walk dependencies, and export UI-ready trees or Graphviz DOT with `container.graph()`
 
 Each example includes detailed comments and runnable code.
 

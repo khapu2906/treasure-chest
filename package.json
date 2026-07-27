@@ -1,6 +1,6 @@
 {
   "name": "@khapu2906/treasure-chest",
-  "version": "1.4.1",
+  "version": "1.5.0",
   "description": "A lightweight TypeScript dependency injection container for managing service dependencies",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
@@ -43,7 +43,8 @@
     "example:12": "tsx examples/12-singleton-vs-composition.ts",
     "example:13": "tsx examples/13-hybrid-architecture.ts",
     "example:14": "tsx examples/14-explain-composition.ts",
-    "examples": "npm run example:01 && npm run example:02 && npm run example:03 && npm run example:04 && npm run example:05 && npm run example:06 && npm run example:07 && npm run example:08 && npm run example:09 && npm run example:10 && npm run example:11 && npm run example:12 && npm run example:13 && npm run example:14",
+    "example:15": "tsx examples/15-dependency-graph.ts",
+    "examples": "npm run example:01 && npm run example:02 && npm run example:03 && npm run example:04 && npm run example:05 && npm run example:06 && npm run example:07 && npm run example:08 && npm run example:09 && npm run example:10 && npm run example:11 && npm run example:12 && npm run example:13 && npm run example:14 && npm run example:15",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "format": "prettier --write \"**/*.{ts,json,md}\"",
