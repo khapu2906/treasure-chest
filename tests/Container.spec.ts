@@ -82,6 +82,30 @@ describe('Container', () => {
       const counter2 = container.resolve<any>('counter');
       expect(counter2.value).toBe(42);
     });
+
+    it('should reuse singleton instance from parent container', () => {
+      let counter = 0;
+      container.singleton('service', () => ({ id: ++counter }));
+
+      const child = container.createChild();
+
+      const rootService = container.resolve<any>('service');
+      const childService = child.resolve<any>('service');
+
+      expect(rootService.id).toBe(1);
+      expect(childService.id).toBe(1);
+      expect(rootService).toBe(childService);
+    });
+
+    it('should reuse singleton instance across grandchildren too', () => {
+      container.singleton('service', () => ({ id: Math.random() }));
+
+      const child = container.createChild();
+      const grandChild = child.createChild();
+
+      expect(container.resolve('service')).toBe(child.resolve('service'));
+      expect(child.resolve('service')).toBe(grandChild.resolve('service'));
+    });
   });
 
   // ========================================
