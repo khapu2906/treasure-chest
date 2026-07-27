@@ -17,6 +17,7 @@
  *  - High-performance Map-based storage (v1.2.0)
  *  - Auto-dispose for IDisposable instances (v1.2.0)
  *  - Modular architecture (v1.2.0)
+ *  - Dependency graph inspection with filtering, tree, and DOT export (v1.5.0)
  *
  * @example
  * ```typescript
@@ -32,6 +33,14 @@
 export { Container } from './Container';
 export { Lazy } from './Lazy';
 export { Scope } from './Scope';
+export { Graph } from './Graph';
 
 // Export types
-export type { Lifecycle, IDisposable, DisposeFn } from './types';
+export type { Lifecycle, IDisposable, DisposeFn, ServiceKey } from './types';
+export type {
+  GraphNode,
+  GraphEdge,
+  GraphSnapshot,
+  GraphNodeFilter,
+  GraphTreeNode,
+} from './Graph';

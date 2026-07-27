@@ -14,6 +14,22 @@ import type {
 } from './types';
 import { Lazy } from './Lazy';
 import { Scope } from './Scope';
+import {
+  Graph,
+  type GraphEdge,
+  type GraphNode,
+  type GraphSnapshot,
+} from './Graph';
+
+/**
+ * A matched binding paired with the container that actually declared it.
+ * Needed so singleton instances are cached on the declaring (owning)
+ * container instead of whichever container happened to call resolve().
+ */
+interface BindingEntry {
+  binding: Binding;
+  owner: Container;
+}
 
 /**
  * Container class for dependency injection
@@ -38,7 +54,7 @@ export class Container {
   private aliases = new Map<ServiceKey, ServiceKey>();
 
   /** Cache for resolved bindings - performance optimization */
-  private bindingCache = new Map<string, Binding>();
+  private bindingCache = new Map<string, BindingEntry>();
 
   /** Current resolution context for contextual binding */
   private currentContext?: ServiceKey;
@@ -54,6 +70,9 @@ export class Container {
 
   /** Resolution stack for circular dependency detection */
   private resolutionStack: ServiceKey[] = [];
+
+  /** Dependency edges observed while resolving: consumerKey -> Set of dependency keys */
+  private dependencyEdges = new Map<string, Set<string>>();
 
   /**
    * Create a new container
@@ -74,6 +93,20 @@ export class Container {
       return `${keyStr}::${context.toString()}`;
     }
     return keyStr;
+  }
+
+  /**
+   * Record that `from` depends on `to`, for later inspection via graph()
+   * @private
+   */
+  private _recordEdge(from: ServiceKey, to: ServiceKey): void {
+    const fromKey = from.toString();
+    const toKey = to.toString();
+    if (fromKey === toKey) return;
+
+    const deps = this.dependencyEdges.get(fromKey) ?? new Set<string>();
+    deps.add(toKey);
+    this.dependencyEdges.set(fromKey, deps);
   }
 
   /**
@@ -270,6 +303,24 @@ export class Container {
     key: ServiceKey,
     context?: ServiceKey
   ): Binding | undefined {
+    return this.findBindingEntry(key, context)?.binding;
+  }
+
+  /**
+   * Find the appropriate binding for a given key and context, along with
+   * the container that actually declared it (the "owner"). Searches in
+   * current container and parent containers. Uses cached result when
+   * possible for performance.
+   *
+   * @private
+   * @param key The service key to find
+   * @param context Optional context for contextual binding
+   * @returns The matching binding paired with its owning container, or undefined
+   */
+  private findBindingEntry(
+    key: ServiceKey,
+    context?: ServiceKey
+  ): BindingEntry | undefined {
     const realKey = this.aliases.get(key) || key;
     const cacheKey = this._toCacheKey(realKey, context);
 
@@ -295,17 +346,21 @@ export class Container {
         ) ||
         bindings[0];
 
-      // Cache the result only if no conditions (conditions are dynamic)
-      if (match && !match.condition) {
-        this.bindingCache.set(cacheKey, match);
-      }
+      if (match) {
+        const entry: BindingEntry = { binding: match, owner: this };
 
-      return match;
+        // Cache the result only if no conditions (conditions are dynamic)
+        if (!match.condition) {
+          this.bindingCache.set(cacheKey, entry);
+        }
+
+        return entry;
+      }
     }
 
     // Try parent container
     if (this.parent) {
-      return this.parent.findBinding(key, context);
+      return this.parent.findBindingEntry(key, context);
     }
 
     return undefined;
@@ -339,14 +394,22 @@ export class Container {
       throw new Error(`Circular dependency detected: ${chain}`);
     }
 
+    // Record dependency edge: whatever is currently resolving depends on this key
+    if (this.resolutionStack.length > 0) {
+      const consumer = this.resolutionStack[this.resolutionStack.length - 1];
+      this._recordEdge(consumer, realKey);
+    }
+
     const prevContext = this.currentContext;
     this.currentContext = context || key;
 
-    const binding = this.findBinding(key, this.currentContext);
+    const entry = this.findBindingEntry(key, this.currentContext);
 
-    if (!binding) {
+    if (!entry) {
       throw new Error(`No binding found for key: ${realKey.toString()}`);
     }
+
+    const { binding, owner } = entry;
 
     // Add to resolution stack
     this.resolutionStack.push(realKey);
@@ -361,7 +424,9 @@ export class Container {
       // Handle different lifecycles
       switch (binding.lifecycle) {
         case 'singleton':
-          return this.resolveSingleton(binding, realKey);
+          // Cached on the owning container so the instance is truly
+          // shared across every child that inherits the binding.
+          return owner.resolveSingleton(binding, realKey);
         case 'scoped':
           return this.resolveScoped(binding, realKey);
         case 'transient':
@@ -524,6 +589,95 @@ export class Container {
   }
 
   /**
+   * Build a snapshot of this container's bindings (own, inherited from a
+   * parent, and inherited from composed containers), plus the dependency
+   * edges observed so far. Used to build a Graph via graph().
+   *
+   * @private
+   * @param seen Keys already captured by a more specific (closer) container
+   */
+  private inspect(seen: Set<string> = new Set()): GraphSnapshot {
+    const nodes: GraphNode[] = [];
+
+    for (const [key, bindingList] of this.bindings) {
+      const keyStr = key.toString();
+      if (seen.has(keyStr)) continue;
+      seen.add(keyStr);
+
+      for (const binding of bindingList) {
+        const fullCacheKey = this._toCacheKey(key, binding.context);
+        const lazyCacheKey = `lazy::${this._toCacheKey(key)}`;
+
+        nodes.push({
+          key: keyStr,
+          lifecycle: binding.lifecycle,
+          lazy: !!binding.lazy,
+          context: binding.context?.toString(),
+          inherited: false,
+          resolved:
+            this.instances.has(fullCacheKey) ||
+            this.instances.has(lazyCacheKey),
+        });
+      }
+    }
+
+    for (const [aliasKey, originalKey] of this.aliases) {
+      const aliasKeyStr = aliasKey.toString();
+      if (seen.has(aliasKeyStr)) continue;
+      seen.add(aliasKeyStr);
+
+      const target = this.findBinding(aliasKey);
+      nodes.push({
+        key: aliasKeyStr,
+        lifecycle: target?.lifecycle ?? 'transient',
+        lazy: !!target?.lazy,
+        aliasOf: originalKey.toString(),
+        inherited: false,
+        resolved: false,
+      });
+    }
+
+    const edges: GraphEdge[] = [];
+    for (const [from, tos] of this.dependencyEdges) {
+      for (const to of tos) {
+        edges.push({ from, to });
+      }
+    }
+
+    const ancestors = [
+      ...(this.parent ? [this.parent] : []),
+      ...this.composedContainers,
+    ];
+
+    for (const ancestor of ancestors) {
+      const snapshot = ancestor.inspect(seen);
+      for (const node of snapshot.nodes) {
+        nodes.push({ ...node, inherited: true });
+      }
+      edges.push(...snapshot.edges);
+    }
+
+    return { nodes, edges };
+  }
+
+  /**
+   * Build a filterable dependency graph of this container's bindings and
+   * the dependency edges observed while resolving them.
+   *
+   * @returns A Graph snapshot you can filter/inspect
+   *
+   * @example
+   * ```typescript
+   * const graph = container.graph();
+   * const singletons = graph.getNodes({ lifecycle: 'singleton' });
+   * const deps = graph.dependenciesOf('userService');
+   * ```
+   */
+  graph(): Graph {
+    return new Graph(this.inspect());
+  }
+
+  /**
    * Reset the container to its initial state
    * Clears all bindings, instances, aliases, and context
    * Useful for testing scenarios
@@ -540,6 +694,7 @@ export class Container {
     this.instances.clear();
     this.aliases.clear();
     this.bindingCache.clear();
+    this.dependencyEdges.clear();
     this.currentContext = undefined;
     this.currentScope = undefined;
     this.resolutionStack = [];
