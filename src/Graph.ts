@@ -8,7 +8,11 @@ import type { Lifecycle, ServiceKey } from './types';
 
 /** A single node in the dependency graph, representing one registered binding */
 export interface GraphNode {
-  /** Stable string form of the service key */
+  /**
+   * Unique, human-readable label of the service key. Usually `key.toString()`;
+   * when two distinct keys share the same string form (e.g. two
+   * `Symbol('db')`s), later ones get a `#2`, `#3`, ... suffix.
+   */
   key: string;
   /** Lifecycle of the binding (transient, singleton, scoped) */
   lifecycle: Lifecycle;
@@ -83,10 +87,21 @@ export class Graph {
   private readonly nodes: GraphNode[];
   private readonly edges: GraphEdge[];
   private readonly byPlainKey: Map<string, GraphNode>;
+  private readonly keyLabels?: ReadonlyMap<ServiceKey, string>;
 
-  constructor(snapshot: GraphSnapshot) {
+  /**
+   * @param snapshot Nodes and edges, keyed by label
+   * @param keyLabels Optional map from real service keys to their labels.
+   *   Container#graph() passes this so lookups by a Symbol find that exact
+   *   Symbol's node, even if another Symbol has the same description.
+   */
+  constructor(
+    snapshot: GraphSnapshot,
+    keyLabels?: ReadonlyMap<ServiceKey, string>
+  ) {
     this.nodes = snapshot.nodes;
     this.edges = snapshot.edges;
+    this.keyLabels = keyLabels;
 
     this.byPlainKey = new Map();
     for (const node of this.nodes) {
@@ -94,6 +109,14 @@ export class Graph {
         this.byPlainKey.set(node.key, node);
       }
     }
+  }
+
+  /**
+   * Turn a service key (or an already-known label) into its node label
+   * @private
+   */
+  private toLabel(key: ServiceKey): string {
+    return this.keyLabels?.get(key) ?? key.toString();
   }
 
   /**
@@ -147,7 +170,7 @@ export class Graph {
    * Get a single (non-contextual) node by key
    */
   getNode(key: ServiceKey): GraphNode | undefined {
-    return this.byPlainKey.get(key.toString());
+    return this.byPlainKey.get(this.toLabel(key));
   }
 
   /**
@@ -158,13 +181,13 @@ export class Graph {
       return [...this.edges];
     }
 
+    const from =
+      filter.from !== undefined ? this.toLabel(filter.from) : undefined;
+    const to = filter.to !== undefined ? this.toLabel(filter.to) : undefined;
+
     return this.edges.filter((e) => {
-      if (filter.from !== undefined && e.from !== filter.from.toString()) {
-        return false;
-      }
-      if (filter.to !== undefined && e.to !== filter.to.toString()) {
-        return false;
-      }
+      if (from !== undefined && e.from !== from) return false;
+      if (to !== undefined && e.to !== to) return false;
       return true;
     });
   }
@@ -173,7 +196,11 @@ export class Graph {
    * Direct dependencies of a key - the services it needs
    */
   dependenciesOf(key: ServiceKey): GraphNode[] {
-    const keyStr = key.toString();
+    return this.dependenciesOfLabel(this.toLabel(key));
+  }
+
+  /** @private */
+  private dependenciesOfLabel(keyStr: string): GraphNode[] {
     return this.edges
       .filter((e) => e.from === keyStr)
       .map((e) => this.byPlainKey.get(e.to))
@@ -184,7 +211,7 @@ export class Graph {
    * Direct dependents of a key - the services that need it
    */
   dependentsOf(key: ServiceKey): GraphNode[] {
-    const keyStr = key.toString();
+    const keyStr = this.toLabel(key);
     return this.edges
       .filter((e) => e.to === keyStr)
       .map((e) => this.byPlainKey.get(e.from))
@@ -228,11 +255,19 @@ export class Graph {
    * // { key: 'service', children: [{ key: 'repo', children: [{ key: 'db', children: [] }] }] }
    * ```
    */
-  toTree(
-    key: ServiceKey,
-    _visited: Set<string> = new Set()
+  toTree(key: ServiceKey): GraphTreeNode | undefined {
+    return this.toTreeByLabel(this.toLabel(key), new Set());
+  }
+
+  /**
+   * Recursion works on labels directly (never back through toLabel), so a
+   * label can't be re-mapped to a different key mid-walk.
+   * @private
+   */
+  private toTreeByLabel(
+    keyStr: string,
+    _visited: Set<string>
   ): GraphTreeNode | undefined {
-    const keyStr = key.toString();
     const node = this.byPlainKey.get(keyStr);
     if (!node) return undefined;
 
@@ -243,8 +278,8 @@ export class Graph {
     const visited = new Set(_visited);
     visited.add(keyStr);
 
-    const children = this.dependenciesOf(keyStr)
-      .map((dep) => this.toTree(dep.key, visited))
+    const children = this.dependenciesOfLabel(keyStr)
+      .map((dep) => this.toTreeByLabel(dep.key, visited))
       .filter((n): n is GraphTreeNode => n !== undefined);
 
     return { ...node, children };
@@ -262,7 +297,7 @@ export class Graph {
    */
   forest(): GraphTreeNode[] {
     return this.roots()
-      .map((root) => this.toTree(root.key))
+      .map((root) => this.toTreeByLabel(root.key, new Set()))
       .filter((n): n is GraphTreeNode => n !== undefined);
   }
 

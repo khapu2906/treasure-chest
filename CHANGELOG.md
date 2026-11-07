@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Distinct `Symbol` keys with the same description (e.g. two `Symbol('Key')`s) no longer collide ([#5](https://github.com/khapu2906/treasure-chest/issues/5)). Internal caches used to key services by `key.toString()`, so the second Symbol could get the first one's binding or singleton instance, and a Symbol depending on a same-description Symbol threw a false "Circular dependency detected" error. Binding, singleton, lazy and dependency-edge caches now compare keys by identity, which also stops a string key like `'Symbol(Key)'` from colliding with `Symbol('Key')`.
+- `Container.graph()` now keeps such keys as separate nodes. `GraphNode.key` stays a readable string; when two distinct keys share the same string form, later ones get a `#2`, `#3`, ... suffix (string keys always keep their own value). `getNode`, `getEdges`, `dependenciesOf`, `dependentsOf` and `toTree` accept the original key and find that exact key's node.
+
 ## [1.5.0] - 2026-07-27
 
 ### Added

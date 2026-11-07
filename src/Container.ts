@@ -18,7 +18,6 @@ import {
   Graph,
   type GraphEdge,
   type GraphNode,
-  type GraphSnapshot,
 } from './Graph';
 
 /**
@@ -29,6 +28,56 @@ import {
 interface BindingEntry {
   binding: Binding;
   owner: Container;
+}
+
+/**
+ * Two-level map keyed by (service key, optional context key).
+ *
+ * Keys are compared by identity, never by their string form, so two
+ * distinct Symbols with the same description (`Symbol('x')` twice) or a
+ * string key that looks like a Symbol (`'Symbol(x)'`) never collide.
+ */
+class KeyContextMap<V> {
+  private readonly map = new Map<ServiceKey, Map<ServiceKey | undefined, V>>();
+
+  get(key: ServiceKey, context?: ServiceKey): V | undefined {
+    return this.map.get(key)?.get(context);
+  }
+
+  has(key: ServiceKey, context?: ServiceKey): boolean {
+    return this.map.get(key)?.has(context) ?? false;
+  }
+
+  set(key: ServiceKey, context: ServiceKey | undefined, value: V): void {
+    let inner = this.map.get(key);
+    if (!inner) {
+      inner = new Map();
+      this.map.set(key, inner);
+    }
+    inner.set(context, value);
+  }
+
+  clear(): void {
+    this.map.clear();
+  }
+}
+
+/** Graph node data before service keys are turned into display labels */
+interface RawGraphNode extends Omit<GraphNode, 'key' | 'context' | 'aliasOf'> {
+  key: ServiceKey;
+  context?: ServiceKey;
+  aliasOf?: ServiceKey;
+}
+
+/** Graph edge data before service keys are turned into display labels */
+interface RawGraphEdge {
+  from: ServiceKey;
+  to: ServiceKey;
+}
+
+interface RawGraphSnapshot {
+  nodes: RawGraphNode[];
+  edges: RawGraphEdge[];
 }
 
 /**
@@ -46,15 +95,19 @@ export class Container {
   /** Map-based storage for bindings - O(1) lookup */
   private bindings = new Map<ServiceKey, Binding[]>();
 
-  /** Cache for singleton instances */
+  /** Cache for singleton instances, keyed by (service key, binding context) */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private instances = new Map<string, any>();
+  private instances = new KeyContextMap<any>();
+
+  /** Cache for lazy singleton wrappers */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private lazyInstances = new Map<ServiceKey, Lazy<any>>();
 
   /** Mapping of aliases to original keys */
   private aliases = new Map<ServiceKey, ServiceKey>();
 
   /** Cache for resolved bindings - performance optimization */
-  private bindingCache = new Map<string, BindingEntry>();
+  private bindingCache = new KeyContextMap<BindingEntry>();
 
   /** Current resolution context for contextual binding */
   private currentContext?: ServiceKey;
@@ -72,7 +125,7 @@ export class Container {
   private resolutionStack: ServiceKey[] = [];
 
   /** Dependency edges observed while resolving: consumerKey -> Set of dependency keys */
-  private dependencyEdges = new Map<string, Set<string>>();
+  private dependencyEdges = new Map<ServiceKey, Set<ServiceKey>>();
 
   /**
    * Create a new container
@@ -83,30 +136,15 @@ export class Container {
   }
 
   /**
-   * Generates a consistent string key for caching, handling both strings and symbols.
-   * This is a simple implementation; it assumes no string keys will collide with `Symbol().toString()`.
-   * @private
-   */
-  private _toCacheKey(key: ServiceKey, context?: ServiceKey): string {
-    const keyStr = key.toString();
-    if (context) {
-      return `${keyStr}::${context.toString()}`;
-    }
-    return keyStr;
-  }
-
-  /**
    * Record that `from` depends on `to`, for later inspection via graph()
    * @private
    */
   private _recordEdge(from: ServiceKey, to: ServiceKey): void {
-    const fromKey = from.toString();
-    const toKey = to.toString();
-    if (fromKey === toKey) return;
+    if (from === to) return;
 
-    const deps = this.dependencyEdges.get(fromKey) ?? new Set<string>();
-    deps.add(toKey);
-    this.dependencyEdges.set(fromKey, deps);
+    const deps = this.dependencyEdges.get(from) ?? new Set<ServiceKey>();
+    deps.add(to);
+    this.dependencyEdges.set(from, deps);
   }
 
   /**
@@ -322,11 +360,10 @@ export class Container {
     context?: ServiceKey
   ): BindingEntry | undefined {
     const realKey = this.aliases.get(key) || key;
-    const cacheKey = this._toCacheKey(realKey, context);
 
     // Check cache first
-    if (this.bindingCache.has(cacheKey)) {
-      return this.bindingCache.get(cacheKey);
+    if (this.bindingCache.has(realKey, context)) {
+      return this.bindingCache.get(realKey, context);
     }
 
     // O(1) Map lookup instead of O(n) array filter
@@ -351,7 +388,7 @@ export class Container {
 
         // Cache the result only if no conditions (conditions are dynamic)
         if (!match.condition) {
-          this.bindingCache.set(cacheKey, entry);
+          this.bindingCache.set(realKey, context, entry);
         }
 
         return entry;
@@ -453,15 +490,13 @@ export class Container {
    * @private
    */
   private resolveSingleton<T>(binding: Binding<T>, cacheKey: ServiceKey): T {
-    // Singletons can be contextual, so we use a string-based key for the instance map.
-    const fullCacheKey = this._toCacheKey(cacheKey, binding.context);
-
-    if (this.instances.has(fullCacheKey)) {
-      return this.instances.get(fullCacheKey);
+    // Singletons can be contextual, so instances are keyed by (key, context).
+    if (this.instances.has(cacheKey, binding.context)) {
+      return this.instances.get(cacheKey, binding.context);
     }
 
     const instance = binding.factory(this);
-    this.instances.set(fullCacheKey, instance);
+    this.instances.set(cacheKey, binding.context, instance);
     return instance;
   }
 
@@ -490,16 +525,15 @@ export class Container {
    * @private
    */
   private resolveLazy<T>(binding: Binding<T>, cacheKey: ServiceKey): Lazy<T> {
-    const fullCacheKey = `lazy::${this._toCacheKey(cacheKey)}`;
-
-    if (this.instances.has(fullCacheKey)) {
-      return this.instances.get(fullCacheKey);
+    const cached = this.lazyInstances.get(cacheKey);
+    if (cached) {
+      return cached;
     }
 
     const lazy = new Lazy(() => binding.factory(this));
 
     if (binding.lifecycle === 'singleton') {
-      this.instances.set(fullCacheKey, lazy);
+      this.lazyInstances.set(cacheKey, lazy);
     }
 
     return lazy;
@@ -589,55 +623,51 @@ export class Container {
   }
 
   /**
-   * Build a snapshot of this container's bindings (own, inherited from a
-   * parent, and inherited from composed containers), plus the dependency
-   * edges observed so far. Used to build a Graph via graph().
+   * Collect this container's bindings (own, inherited from a parent, and
+   * inherited from composed containers), plus the dependency edges observed
+   * so far. Keys are kept as real ServiceKeys here; graph() turns them into
+   * unique display labels afterwards.
    *
    * @private
    * @param seen Keys already captured by a more specific (closer) container
    */
-  private inspect(seen: Set<string> = new Set()): GraphSnapshot {
-    const nodes: GraphNode[] = [];
+  private inspect(seen: Set<ServiceKey> = new Set()): RawGraphSnapshot {
+    const nodes: RawGraphNode[] = [];
 
     for (const [key, bindingList] of this.bindings) {
-      const keyStr = key.toString();
-      if (seen.has(keyStr)) continue;
-      seen.add(keyStr);
+      if (seen.has(key)) continue;
+      seen.add(key);
 
       for (const binding of bindingList) {
-        const fullCacheKey = this._toCacheKey(key, binding.context);
-        const lazyCacheKey = `lazy::${this._toCacheKey(key)}`;
-
         nodes.push({
-          key: keyStr,
+          key,
           lifecycle: binding.lifecycle,
           lazy: !!binding.lazy,
-          context: binding.context?.toString(),
+          context: binding.context,
           inherited: false,
           resolved:
-            this.instances.has(fullCacheKey) ||
-            this.instances.has(lazyCacheKey),
+            this.instances.has(key, binding.context) ||
+            this.lazyInstances.has(key),
         });
       }
     }
 
     for (const [aliasKey, originalKey] of this.aliases) {
-      const aliasKeyStr = aliasKey.toString();
-      if (seen.has(aliasKeyStr)) continue;
-      seen.add(aliasKeyStr);
+      if (seen.has(aliasKey)) continue;
+      seen.add(aliasKey);
 
       const target = this.findBinding(aliasKey);
       nodes.push({
-        key: aliasKeyStr,
+        key: aliasKey,
         lifecycle: target?.lifecycle ?? 'transient',
         lazy: !!target?.lazy,
-        aliasOf: originalKey.toString(),
+        aliasOf: originalKey,
         inherited: false,
         resolved: false,
       });
     }
 
-    const edges: GraphEdge[] = [];
+    const edges: RawGraphEdge[] = [];
     for (const [from, tos] of this.dependencyEdges) {
       for (const to of tos) {
         edges.push({ from, to });
@@ -661,6 +691,42 @@ export class Container {
   }
 
   /**
+   * Assign every distinct service key a unique, human-readable label.
+   *
+   * String keys always keep their own value as label. Other keys use
+   * `toString()`; when that is already taken by a different key (e.g. two
+   * `Symbol('db')`s, or `Symbol('db')` next to the string `'Symbol(db)'`),
+   * a `#2`, `#3`, ... suffix is appended so graph nodes never merge.
+   *
+   * @private
+   */
+  private static labelKeys(keys: Iterable<ServiceKey>): Map<ServiceKey, string> {
+    const all = [...new Set(keys)];
+    const labels = new Map<ServiceKey, string>();
+    const used = new Set<string>();
+
+    for (const key of all) {
+      if (typeof key === 'string') {
+        labels.set(key, key);
+        used.add(key);
+      }
+    }
+
+    for (const key of all) {
+      if (typeof key === 'string') continue;
+      const base = key.toString();
+      let label = base;
+      for (let n = 2; used.has(label); n++) {
+        label = `${base}#${n}`;
+      }
+      labels.set(key, label);
+      used.add(label);
+    }
+
+    return labels;
+  }
+
+  /**
    * Build a filterable dependency graph of this container's bindings and
    * the dependency edges observed while resolving them.
    *
@@ -674,7 +740,45 @@ export class Container {
    * ```
    */
   graph(): Graph {
-    return new Graph(this.inspect());
+    const raw = this.inspect();
+
+    const keys: ServiceKey[] = [];
+    for (const node of raw.nodes) {
+      keys.push(node.key);
+      if (node.context !== undefined) keys.push(node.context);
+      if (node.aliasOf !== undefined) keys.push(node.aliasOf);
+    }
+    for (const edge of raw.edges) {
+      keys.push(edge.from, edge.to);
+    }
+
+    const labels = Container.labelKeys(keys);
+    const label = (key: ServiceKey) => labels.get(key) as string;
+
+    const nodes: GraphNode[] = raw.nodes.map((node) => {
+      const out: GraphNode = {
+        key: label(node.key),
+        lifecycle: node.lifecycle,
+        lazy: node.lazy,
+        inherited: node.inherited,
+        resolved: node.resolved,
+      };
+      // Preserve the node shape graph() has always produced: binding nodes
+      // carry `context` (possibly undefined), alias nodes carry `aliasOf`.
+      if ('context' in node) {
+        out.context =
+          node.context !== undefined ? label(node.context) : undefined;
+      }
+      if (node.aliasOf !== undefined) out.aliasOf = label(node.aliasOf);
+      return out;
+    });
+
+    const edges: GraphEdge[] = raw.edges.map((edge) => ({
+      from: label(edge.from),
+      to: label(edge.to),
+    }));
+
+    return new Graph({ nodes, edges }, labels);
   }
 
   /**
@@ -692,6 +796,7 @@ export class Container {
   reset() {
     this.bindings.clear();
     this.instances.clear();
+    this.lazyInstances.clear();
     this.aliases.clear();
     this.bindingCache.clear();
     this.dependencyEdges.clear();
