@@ -14,11 +14,7 @@ import type {
 } from './types';
 import { Lazy } from './Lazy';
 import { Scope } from './Scope';
-import {
-  Graph,
-  type GraphEdge,
-  type GraphNode,
-} from './Graph';
+import { Graph, type GraphEdge, type GraphNode } from './Graph';
 
 /**
  * A matched binding paired with the container that actually declared it.
@@ -700,7 +696,9 @@ export class Container {
    *
    * @private
    */
-  private static labelKeys(keys: Iterable<ServiceKey>): Map<ServiceKey, string> {
+  private static labelKeys(
+    keys: Iterable<ServiceKey>
+  ): Map<ServiceKey, string> {
     const all = [...new Set(keys)];
     const labels = new Map<ServiceKey, string>();
     const used = new Set<string>();
