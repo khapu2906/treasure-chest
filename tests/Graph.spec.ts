@@ -225,4 +225,69 @@ describe('Container.graph()', () => {
       );
     });
   });
+
+  // Regression: https://github.com/khapu2906/treasure-chest/issues/5
+  describe('distinct symbols with the same description', () => {
+    it('keeps separate nodes and edges with unique labels', () => {
+      const container = new Container();
+      const A = Symbol('Key');
+      const B = Symbol('Key');
+
+      container.singleton(A, () => 'value-A');
+      container.singleton(B, (c) => c.resolve<string>(A) + 'b');
+      container.resolve(B);
+
+      const graph = container.graph();
+
+      expect(graph.getNodes().map((n) => n.key)).toEqual([
+        'Symbol(Key)',
+        'Symbol(Key)#2',
+      ]);
+      expect(graph.getNode(A)?.key).toBe('Symbol(Key)');
+      expect(graph.getNode(B)?.key).toBe('Symbol(Key)#2');
+      expect(graph.getEdges()).toEqual([
+        { from: 'Symbol(Key)#2', to: 'Symbol(Key)' },
+      ]);
+      expect(graph.dependenciesOf(B).map((n) => n.key)).toEqual([
+        'Symbol(Key)',
+      ]);
+      expect(graph.dependentsOf(A).map((n) => n.key)).toEqual([
+        'Symbol(Key)#2',
+      ]);
+      expect(graph.dependenciesOf(A)).toEqual([]);
+
+      const tree = graph.toTree(B)!;
+      expect(tree.key).toBe('Symbol(Key)#2');
+      expect(tree.children.map((n) => n.key)).toEqual(['Symbol(Key)']);
+      expect(tree.children[0].cyclic).toBeUndefined();
+    });
+
+    it('keeps a string key and a same-text symbol apart', () => {
+      const container = new Container();
+      const S = Symbol('k');
+      container.singleton(S, () => 'symbol');
+      container.singleton('Symbol(k)', () => 'string');
+
+      const graph = container.graph();
+
+      // String keys always keep their own value as label
+      expect(graph.getNode('Symbol(k)')?.key).toBe('Symbol(k)');
+      expect(graph.getNode(S)?.key).toBe('Symbol(k)#2');
+    });
+
+    it('keeps an inherited symbol separate from a same-description own symbol', () => {
+      const parent = new Container();
+      const A = Symbol('Key');
+      const B = Symbol('Key');
+      parent.singleton(A, () => 'value-A');
+      const child = parent.createChild();
+      child.singleton(B, () => 'value-B');
+
+      const graph = child.graph();
+
+      expect(graph.getNode(A)?.inherited).toBe(true);
+      expect(graph.getNode(B)?.inherited).toBe(false);
+      expect(graph.getNodes()).toHaveLength(2);
+    });
+  });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { Container } from '../src';
+import { Container, Lazy } from '../src';
 
 describe('Container', () => {
   let container: Container;
@@ -81,6 +81,30 @@ describe('Container', () => {
 
       const counter2 = container.resolve<any>('counter');
       expect(counter2.value).toBe(42);
+    });
+
+    it('should reuse singleton instance from parent container', () => {
+      let counter = 0;
+      container.singleton('service', () => ({ id: ++counter }));
+
+      const child = container.createChild();
+
+      const rootService = container.resolve<any>('service');
+      const childService = child.resolve<any>('service');
+
+      expect(rootService.id).toBe(1);
+      expect(childService.id).toBe(1);
+      expect(rootService).toBe(childService);
+    });
+
+    it('should reuse singleton instance across grandchildren too', () => {
+      container.singleton('service', () => ({ id: Math.random() }));
+
+      const child = container.createChild();
+      const grandChild = child.createChild();
+
+      expect(container.resolve('service')).toBe(child.resolve('service'));
+      expect(child.resolve('service')).toBe(grandChild.resolve('service'));
     });
   });
 
@@ -644,6 +668,77 @@ describe('Container', () => {
       const keys = container.keys();
       expect(keys).toContain(SYMBOL_KEY);
       expect(keys).toContain('stringKey');
+    });
+
+    // Regression: https://github.com/khapu2906/treasure-chest/issues/5
+    describe('distinct symbols with the same description', () => {
+      const A = Symbol('Key');
+      const B = Symbol('Key');
+
+      it('keeps separate singleton instances', () => {
+        container.singleton(A, () => 'value-A');
+        container.singleton(B, () => 'value-B');
+
+        expect(container.resolve(A)).toBe('value-A');
+        expect(container.resolve(B)).toBe('value-B');
+      });
+
+      it('keeps separate transient bindings', () => {
+        container.bind(A, () => 'value-A');
+        container.bind(B, () => 'value-B');
+
+        expect(container.resolve(A)).toBe('value-A');
+        expect(container.resolve(B)).toBe('value-B');
+      });
+
+      it('keeps separate lazy singletons', () => {
+        container.lazy(A, () => 'value-A');
+        container.lazy(B, () => 'value-B');
+
+        expect(container.resolve<Lazy<string>>(A).value).toBe('value-A');
+        expect(container.resolve<Lazy<string>>(B).value).toBe('value-B');
+      });
+
+      it('does not report a false circular dependency', () => {
+        container.singleton(A, () => 'value-A');
+        container.singleton(B, (c) => c.resolve<string>(A) + 'b');
+
+        expect(container.resolve(B)).toBe('value-Ab');
+      });
+
+      it('keeps separate contextual bindings', () => {
+        const REPO = Symbol('Repo');
+        container
+          .when(A)
+          .needs(REPO)
+          .give(() => 'repo for A');
+        container
+          .when(B)
+          .needs(REPO)
+          .give(() => 'repo for B');
+
+        expect(container.resolve(REPO, A)).toBe('repo for A');
+        expect(container.resolve(REPO, B)).toBe('repo for B');
+      });
+
+      it('shares singletons across child containers per symbol', () => {
+        container.singleton(A, () => ({ name: 'A' }));
+        container.singleton(B, () => ({ name: 'B' }));
+        const child = container.createChild();
+
+        expect(child.resolve(A)).toBe(container.resolve(A));
+        expect(child.resolve(B)).toBe(container.resolve(B));
+        expect(child.resolve(A)).not.toBe(child.resolve(B));
+      });
+    });
+
+    it('does not confuse a string key with a symbol of the same text', () => {
+      const S = Symbol('k');
+      container.singleton('Symbol(k)', () => 'string');
+      container.singleton(S, () => 'symbol');
+
+      expect(container.resolve('Symbol(k)')).toBe('string');
+      expect(container.resolve(S)).toBe('symbol');
     });
   });
 
