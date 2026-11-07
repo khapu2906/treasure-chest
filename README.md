@@ -33,7 +33,7 @@ A lightweight and powerful TypeScript dependency injection container for managin
 ### Developer Experience
 
 - **Intuitive API**: Fluent API with comprehensive JSDoc
-- **Well Tested**: 110+ test cases with full coverage
+- **Well Tested**: 120+ test cases with full coverage
 - **Dual Module Support**: Both CommonJS and ES Modules (ESM)
 - **Type Safe**: Full TypeScript declarations
 - **Production Ready**: Battle-tested patterns
